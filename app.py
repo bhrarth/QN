@@ -1,15 +1,21 @@
 from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
+from pymongo import MongoClient
 
 app = Flask(__name__)
-# Replace 'postgres', 'Bharath@postsql7', and 'qa_database' with your actual PostgreSQL credentials
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:admin711@localhost/phonenumbers'
-db = SQLAlchemy(app)
 
-class PhoneNumber(db.Model):
-    __tablename__='phonenumbers'
-    id = db.Column(db.Integer, primary_key=True)
-    number = db.Column(db.String(15), nullable=False)
+# Replace 'username', 'password', 'cluster_name', and 'phonenumbers' with your actual MongoDB connection details
+mongo_client = MongoClient('mongodb+srv://bharath:arK5nNpCkKMwLXS4@cluster0.a0zbdsq.mongodb.net/test')
+db = mongo_client['phonenumbers']
+collection = db['phonenumbers']
+
+class PhoneNumber:
+    def __init__(self, number):
+        self.number = number
+
+# Check if the collection exists, create it if not
+if 'phonenumbers' not in db.list_collection_names():
+    db.create_collection('phonenumbers')
+    print("Collection created successfully")
 
 @app.route('/')
 def index():
@@ -20,24 +26,18 @@ def submit():
     if request.method == 'POST':
         number = request.form['number']
 
-        # Validate and store the number in the database
+        # Validate and store the number in the MongoDB collection
         if number:
             try:
                 new_number = PhoneNumber(number=number)
-                db.session.add(new_number)
-                db.session.commit()
+                collection.insert_one(new_number.__dict__)
                 print("Submit successful")
-                
+
             except Exception as e:
-                db.session.rollback()
                 print(f"Error: {e}")
                 return f"Error: {e}"
 
     return render_template('success.html') 
 
-    
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        print("Database tables created successfully")
     app.run(debug=True)
